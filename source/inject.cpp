@@ -1,6 +1,85 @@
 #include "codeinjector/inject.hpp"
 
-bool codeinjector::inject() {
+#include <algorithm>
+#include <cassert>
+#include <cstring>
+#include <ranges>
+
+#include <unistd.h>
+
+extern char** environ;
+
+namespace {
+    char* to_cstr(std::string_view str) {
+        char* const cstr = strndup(str.data(), str.size());
+        assert(cstr != nullptr);
+        return cstr;
+    }
+
+    char* duplicate_cstr(const char* const oldCStr) {
+        char* const newCStr = strdup(oldCStr);
+        assert(newCStr != nullptr);
+        return newCStr;
+    }
+
+    std::vector<char*> get_environment() {
+        std::vector<char*> environment;
+
+        for (size_t i = 0; environ[i] != nullptr; ++i) {
+            environment.push_back(duplicate_cstr(environ[i]));
+        }
+
+        environment.push_back(nullptr);
+        return environment;
+    }
+
+    std::vector<char*> append_ld_preload(std::vector<char*> environment, std::filesystem::path lib) {
+        constexpr std::string_view ldPreloadPrefix = "LD_PRELOAD=";
+        const auto libPath = std::filesystem::absolute(lib).string();
+
+        auto existingLDPreloadIter = std::ranges::find_if(
+            environment,
+            [ldPreloadPrefix](char* const cstr) {
+                return cstr != nullptr && strncmp(cstr, ldPreloadPrefix.data(), ldPreloadPrefix.size()) == 0;
+            }
+        );
+
+        if (existingLDPreloadIter != environment.end()) {
+            std::string ldPreload = *existingLDPreloadIter;
+            ldPreload.reserve(ldPreload.size() + 1 /* space */ + libPath.size() + 1 /* null terminator */);
+            ldPreload.append(" ");
+            ldPreload.append(libPath);
+
+            free(*existingLDPreloadIter);
+            *existingLDPreloadIter = to_cstr(ldPreload);
+        } else {
+            environment.insert(environment.end() - 2 /* skip last entry */, to_cstr(std::string(ldPreloadPrefix) + libPath));
+        }
+
+        return environment;
+    }
+}
+
+bool codeinjector::inject_library(std::filesystem::path program, std::vector<std::string_view> args, std::filesystem::path lib) {
+    assert(std::filesystem::exists(program));
+    assert(std::filesystem::exists(lib));
+
+    std::vector<char*> argv;
+    argv.reserve(1 /* target program */ + args.size() + 1 /* nullptr */);
+
+    argv.push_back(to_cstr(program.operator string_type()));
+    std::ranges::copy(args | std::views::transform(to_cstr), std::back_inserter(argv));
+    argv.push_back(nullptr);
+
+    assert(argv.size() >= 2);
+
+    auto environment = append_ld_preload(get_environment(), lib.operator string_type());
+
+    execvpe(argv[0], &argv[1], environment.data());
+
+    // Should only ever get here if the exec failed
+    for(auto* const cstr : argv) { free(cstr); }
+    for(auto* const cstr : environment) { free(cstr); }
     return false;
 }
 
