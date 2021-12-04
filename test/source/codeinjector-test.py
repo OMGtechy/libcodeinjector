@@ -18,7 +18,15 @@ def main():
     except FileNotFoundError:
         pass
 
-    completed_process = subprocess.run('./codeinjector-caller')
+    enable_asan  = len(sys.argv) > 1 and sys.argv[1] == '1'
+
+    print('enable_asan:  %r' % enable_asan)
+
+    environment = os.environ.copy();
+
+    if enable_asan: environment['LD_PRELOAD'] = 'libasan.so'
+
+    completed_process = subprocess.run('./codeinjector-caller', env=environment)
     if completed_process.returncode != 0:
         print('return code non-zero', file = sys.stderr)
         return completed_process.returncode

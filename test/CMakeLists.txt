@@ -4,40 +4,26 @@ project(codeinjector-test LANGUAGES CXX)
 option(ENABLE_ASAN "Enable address sanitizer flags." OFF)
 option(ENABLE_UBSAN "Enable undefined behaviour sanitizer flags." OFF)
 
-add_library(common INTERFACE)
+list(
+    APPEND TEST_COMPILE_OPTIONS
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Werror
+)
 
 if(ENABLE_ASAN OR ENABLE_UBSAN)
-    target_compile_options(
-        common
-        INTERFACE
-        -fno-omit-frame-pointer
-    )
+    list(APPEND TEST_COMPILE_OPTIONS -fno-omit-frame-pointer)
 endif()
 
 if(ENABLE_ASAN)
-    target_compile_options(
-        common
-        INTERFACE
-        -fsanitize=address
-    )
-    target_link_options(
-        common
-        INTERFACE
-        -fsanitize=address
-    )
+    list(APPEND TEST_COMPILE_OPTIONS -fsanitize=address)
+    list(APPEND TEST_LINK_OPTIONS -fsanitize=address)
 endif()
 
 if(ENABLE_UBSAN)
-    target_compile_options(
-        common
-        INTERFACE
-        -fsanitize=undefined
-    )
-    target_link_options(
-        common
-        INTERFACE
-        -fsanitize=undefined
-    )
+    list(APPEND TEST_COMPILE_OPTIONS -fsanitize=undefined)
+    list(APPEND TEST_LINK_OPTIONS -fsanitize=undefined)
 endif()
 
 add_library(
@@ -55,23 +41,19 @@ add_executable(
     source/codeinjector-caller.cpp
 )
 
-target_compile_options(
-    codeinjector-caller PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Werror
-)
-
 target_link_libraries(
     codeinjector-caller
-    common
     codeinjector
 )
 
-target_link_libraries(injected-library common)
-target_link_libraries(injection-target common)
+target_compile_options(injected-library    PRIVATE ${TEST_COMPILE_OPTIONS})
+target_compile_options(injection-target    PRIVATE ${TEST_COMPILE_OPTIONS})
+target_compile_options(codeinjector-caller PRIVATE ${TEST_COMPILE_OPTIONS})
+
+target_link_options(injected-library    PRIVATE ${TEST_LINK_OPTIONS})
+target_link_options(injection-target    PRIVATE ${TEST_LINK_OPTIONS})
+target_link_options(codeinjector-caller PRIVATE ${TEST_LINK_OPTIONS})
 
 add_test(NAME codeinjector-test
-         COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/source/codeinjector-test.py)
+         COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/source/codeinjector-test.py ${ENABLE_ASAN})
 
