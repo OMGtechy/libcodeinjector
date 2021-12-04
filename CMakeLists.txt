@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 enable_testing()
 
-option(ENABLE_COVERAGE "Enable code coverage flags." OFF)
 option(ENABLE_ASAN "Enable address sanitizer flags." OFF)
 option(ENABLE_UBSAN "Enable undefined behaviour sanitizer flags." OFF)
 
@@ -29,19 +28,6 @@ target_compile_options(
     -Wpedantic
     -Werror
 )
-
-if(ENABLE_COVERAGE)
-    target_compile_options(
-        codeinjector
-        PRIVATE
-        --coverage
-    )
-    target_link_libraries(
-        codeinjector
-        PRIVATE
-        gcov
-    )
-endif()
 
 if(ENABLE_ASAN OR ENABLE_UBSAN)
     target_compile_options(
