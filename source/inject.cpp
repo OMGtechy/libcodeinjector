@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <ranges>
 
 #include <unistd.h>
 
@@ -67,13 +66,13 @@ bool codeinjector::inject_library(std::filesystem::path program, std::vector<std
     std::vector<char*> argv;
     argv.reserve(1 /* target program */ + args.size() + 1 /* nullptr */);
 
-    argv.push_back(to_cstr(program.operator string_type()));
-    std::ranges::copy(args | std::views::transform(to_cstr), std::back_inserter(argv));
+    argv.push_back(to_cstr(program.operator std::string()));
+    std::transform(args.cbegin(), args.cend(), std::back_inserter(argv), to_cstr);
     argv.push_back(nullptr);
 
     assert(argv.size() >= 2);
 
-    auto environment = append_ld_preload(get_environment(), lib.operator string_type());
+    auto environment = append_ld_preload(get_environment(), lib.operator std::string());
 
     execvpe(argv[0], &argv[1], environment.data());
 
