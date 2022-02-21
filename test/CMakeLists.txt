@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.16)
 project(codeinjector-test LANGUAGES CXX)
 
 option(ENABLE_ASAN "Enable address sanitizer flags." OFF)
