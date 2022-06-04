@@ -19,3 +19,14 @@ namespace codeinjector {
     bool inject_library(std::filesystem::path program, std::vector<std::string_view> args, std::filesystem::path lib);
 }
 
+extern "C" {
+    //!
+    //! \brief  C wrapper for codeinjector::inject_library.
+    //!
+    //! \note  All const char* strings must be null terminated.
+    //!
+    bool codeinjector_inject_library(const char* program,
+                                     const char** args, size_t argsCount,
+                                     const char* lib);
+}
+

@@ -82,3 +82,18 @@ bool codeinjector::inject_library(std::filesystem::path program, std::vector<std
     return false;
 }
 
+extern "C" {
+    bool codeinjector_inject_library(const char* const program,
+                                     const char** const cArgs, size_t cArgsCount,
+                                     const char* lib) {
+        std::vector<std::string_view> args;
+        args.resize(cArgsCount);
+
+        for (size_t i = 0; i < cArgsCount; ++i) {
+            args[i] = cArgs[i];
+        }
+
+        return codeinjector::inject_library(program, args, lib);
+    }
+}
+
